@@ -1,4 +1,5 @@
 // Defaults
+import { performance } from "perf_hooks";
 
 const defaultInstanceSettings = {
   update: null,
@@ -50,8 +51,8 @@ const is = {
   arr: a => Array.isArray(a),
   obj: a => stringContains(Object.prototype.toString.call(a), 'Object'),
   pth: a => is.obj(a) && a.hasOwnProperty('totalLength'),
-  svg: a => a instanceof SVGElement,
-  inp: a => a instanceof HTMLInputElement,
+  svg: a => typeof(SVGElement) !== 'undefined' && a instanceof SVGElement,
+  inp: a => typeof(HTMLInputElement) !== 'undefined' && a instanceof HTMLInputElement,
   dom: a => a.nodeType || is.svg(a),
   str: a => typeof a === 'string',
   fnc: a => typeof a === 'function',
@@ -300,7 +301,7 @@ function flattenArray(arr) {
 function toArray(o) {
   if (is.arr(o)) return o;
   if (is.str(o)) o = selectString(o) || o;
-  if (o instanceof NodeList || o instanceof HTMLCollection) return [].slice.call(o);
+  if ((typeof(NodeList) !== 'undefined' && o instanceof NodeList) || (typeof(HTMLCollection) !== 'undefined' && o instanceof HTMLCollection)) return [].slice.call(o);
   return [o];
 }
 
@@ -839,9 +840,10 @@ let raf;
 
 const engine = (() => {
   function play() { 
-    raf = requestAnimationFrame(step);
+    //raf = requestAnimationFrame(step);
+    raf = setTimeout(step, 40);
   }
-  function step(t) {
+  function step(t=(performance.now())) {
     let activeInstancesLength = activeInstances.length;
     if (activeInstancesLength) {
       let i = 0;
@@ -860,7 +862,8 @@ const engine = (() => {
       }
       play();
     } else {
-      raf = cancelAnimationFrame(raf);
+      //raf = cancelAnimationFrame(raf);
+      raf = clearTimeout(raf);
     }
   }
   return play;
@@ -889,7 +892,7 @@ function anime(params = {}) {
   let resolve = null;
 
   function makePromise(instance) {
-    const promise = window.Promise && new Promise(_resolve => resolve = _resolve);
+    const promise = (typeof(Promise) !== 'undefined' || window.Promise) && new Promise(_resolve => resolve = _resolve);
     instance.finished = promise;
     return promise;
   }
@@ -1045,7 +1048,7 @@ function anime(params = {}) {
           instance.completed = true;
           setCallback('loopComplete');
           setCallback('complete');
-          if (!instance.passThrough && 'Promise' in window) {
+          if (!instance.passThrough && (typeof(Promise) !== 'undefined' || 'Promise' in window)) {
             resolve();
             promise = makePromise(instance);
           }
